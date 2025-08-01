@@ -149,7 +149,9 @@ export class FigmaParser {
       
       if (nodeId) {
         // 🔥 USE NODES ENDPOINT TO AVOID LARGE FILE DOWNLOADS
-        console.log(`🎯 Using nodes endpoint for specific node: ${nodeId}`);
+        console.error(`🎯 Using nodes endpoint for specific node: ${nodeId}`);
+        let useNodesEndpoint = true;
+        
         try {
           const nodesResponse = await this.figmaApi.getNodes(fileKeyOrUrl, [nodeId]);
           
@@ -158,6 +160,7 @@ export class FigmaParser {
           const targetNode = nodes[nodeId];
           
           if (!targetNode || targetNode.err) {
+            console.error(`❌ Node ${nodeId} not found in nodes response: ${targetNode?.err || 'Unknown error'}`);
             throw new Error(`Node ${nodeId} not found or has error: ${targetNode?.err || 'Unknown error'}`);
           }
           
@@ -181,14 +184,22 @@ export class FigmaParser {
             linkAccess: 'view'
           } as FigmaFileResponse;
           
-          console.log(`✅ Successfully fetched node: ${targetNode.document.name}`);
+          console.error(`✅ Successfully fetched node via nodes endpoint: ${targetNode.document.name}`);
         } catch (nodeError) {
-          console.log(`⚠️ Nodes endpoint failed, falling back to file endpoint: ${nodeError}`);
-          // Fallback to file endpoint with heavy filtering
-          fileResponse = await this.figmaApi.getFile(fileKeyOrUrl, { 
-            ids: nodeId,
-            depth: 1
-          });
+          console.error(`⚠️ Nodes endpoint failed, falling back to file endpoint:`, nodeError);
+          useNodesEndpoint = false;
+          
+          try {
+            // Fallback to file endpoint with heavy filtering
+            fileResponse = await this.figmaApi.getFile(fileKeyOrUrl, { 
+              ids: nodeId,
+              depth: 1
+            });
+            console.error(`✅ Successfully fetched via file endpoint fallback`);
+          } catch (fileError) {
+            console.error(`💥 Both nodes and file endpoints failed:`, fileError);
+            throw new Error(`Failed to fetch node ${nodeId}. Nodes endpoint error: ${nodeError}. File endpoint error: ${fileError}`);
+          }
         }
       } else {
         // For full file requests, use heavy depth limit
