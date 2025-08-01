@@ -1,0 +1,263 @@
+{
+  "file": {
+    "document": {
+      "id": "0:0",
+      "name": "Document",
+      "type": "DOCUMENT",
+      "children": [
+        {
+          "id": "1:1",
+          "name": "Page 1",
+          "type": "CANVAS",
+          "children": [
+            {
+              "id": "2:1",
+              "name": "Login Form",
+              "type": "FRAME",
+              "absoluteBoundingBox": {
+                "x": 100,
+                "y": 100,
+                "width": 320,
+                "height": 400
+              },
+              "backgroundColor": {
+                "r": 1,
+                "g": 1,
+                "b": 1,
+                "a": 1
+              },
+              "cornerRadius": 8,
+              "children": [
+                {
+                  "id": "3:1",
+                  "name": "Title",
+                  "type": "TEXT",
+                  "characters": "Login",
+                  "absoluteBoundingBox": {
+                    "x": 120,
+                    "y": 130,
+                    "width": 80,
+                    "height": 32
+                  },
+                  "style": {
+                    "fontFamily": "Inter",
+                    "fontWeight": 600,
+                    "fontSize": 24,
+                    "textAlignHorizontal": "CENTER",
+                    "fills": [
+                      {
+                        "type": "SOLID",
+                        "color": {
+                          "r": 0.1,
+                          "g": 0.1,
+                          "b": 0.1,
+                          "a": 1
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "id": "4:1",
+                  "name": "Username Input",
+                  "type": "FRAME",
+                  "absoluteBoundingBox": {
+                    "x": 120,
+                    "y": 180,
+                    "width": 280,
+                    "height": 40
+                  },
+                  "backgroundColor": {
+                    "r": 0.98,
+                    "g": 0.98,
+                    "b": 0.98,
+                    "a": 1
+                  },
+                  "cornerRadius": 6,
+                  "strokes": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
+                        "a": 1
+                      }
+                    }
+                  ],
+                  "strokeWeight": 1,
+                  "children": [
+                    {
+                      "id": "5:1",
+                      "name": "Placeholder",
+                      "type": "TEXT",
+                      "characters": "Enter username",
+                      "absoluteBoundingBox": {
+                        "x": 132,
+                        "y": 190,
+                        "width": 120,
+                        "height": 20
+                      },
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontWeight": 400,
+                        "fontSize": 14,
+                        "fills": [
+                          {
+                            "type": "SOLID",
+                            "color": {
+                              "r": 0.6,
+                              "g": 0.6,
+                              "b": 0.6,
+                              "a": 1
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "6:1",
+                  "name": "Password Input",
+                  "type": "FRAME",
+                  "absoluteBoundingBox": {
+                    "x": 120,
+                    "y": 240,
+                    "width": 280,
+                    "height": 40
+                  },
+                  "backgroundColor": {
+                    "r": 0.98,
+                    "g": 0.98,
+                    "b": 0.98,
+                    "a": 1
+                  },
+                  "cornerRadius": 6,
+                  "strokes": [
+                    {
+                      "type": "SOLID",
+                      "color": {
+                        "r": 0.8,
+                        "g": 0.8,
+                        "b": 0.8,
+                        "a": 1
+                      }
+                    }
+                  ],
+                  "strokeWeight": 1,
+                  "children": [
+                    {
+                      "id": "7:1",
+                      "name": "Placeholder",
+                      "type": "TEXT",
+                      "characters": "Enter password",
+                      "absoluteBoundingBox": {
+                        "x": 132,
+                        "y": 250,
+                        "width": 120,
+                        "height": 20
+                      },
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontWeight": 400,
+                        "fontSize": 14,
+                        "fills": [
+                          {
+                            "type": "SOLID",
+                            "color": {
+                              "r": 0.6,
+                              "g": 0.6,
+                              "b": 0.6,
+                              "a": 1
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "8:1",
+                  "name": "Login Button",
+                  "type": "FRAME",
+                  "absoluteBoundingBox": {
+                    "x": 120,
+                    "y": 300,
+                    "width": 280,
+                    "height": 44
+                  },
+                  "backgroundColor": {
+                    "r": 0.24,
+                    "g": 0.51,
+                    "b": 1,
+                    "a": 1
+                  },
+                  "cornerRadius": 6,
+                  "effects": [
+                    {
+                      "type": "DROP_SHADOW",
+                      "color": {
+                        "r": 0.24,
+                        "g": 0.51,
+                        "b": 1,
+                        "a": 0.3
+                      },
+                      "offset": {
+                        "x": 0,
+                        "y": 2
+                      },
+                      "radius": 4,
+                      "visible": true
+                    }
+                  ],
+                  "children": [
+                    {
+                      "id": "9:1",
+                      "name": "Button Text",
+                      "type": "TEXT",
+                      "characters": "Login",
+                      "absoluteBoundingBox": {
+                        "x": 240,
+                        "y": 312,
+                        "width": 40,
+                        "height": 20
+                      },
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontWeight": 500,
+                        "fontSize": 16,
+                        "textAlignHorizontal": "CENTER",
+                        "fills": [
+                          {
+                            "type": "SOLID",
+                            "color": {
+                              "r": 1,
+                              "g": 1,
+                              "b": 1,
+                              "a": 1
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "components": {},
+    "componentSets": {},
+    "styles": {},
+    "name": "Login Form Example",
+    "lastModified": "2024-01-15T10:30:00Z",
+    "version": "1.0",
+    "role": "owner"
+  },
+  "components": [],
+  "styles": [],
+  "assets": []
+}
