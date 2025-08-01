@@ -365,22 +365,61 @@ async function createServer() {
             figmaParser.initialize(accessToken);
           }
 
-          const thumbnail = await figmaParser['figmaApi']!.getNodeThumbnail(figmaUrl, nodeId, { scale, format });
-          
-          if (!thumbnail) {
-            throw new Error(`Failed to get thumbnail for node ${nodeId}`);
-          }
+          try {
+            // Normalize figmaUrl - handle both full URLs and file keys
+            let normalizedUrl = figmaUrl;
+            if (!figmaUrl.includes('figma.com')) {
+              // If it's just a file key, construct a proper URL
+              normalizedUrl = `https://www.figma.com/file/${figmaUrl}/`;
+            }
 
-          return {
-            content: [
-              {
-                type: 'image',
-                data: thumbnail,
-                mimeType: format === 'jpg' ? 'image/jpeg' : 
-                         format === 'svg' ? 'image/svg+xml' : 'image/png',
-              },
-            ],
-          };
+            console.log(`🖼️ Getting thumbnail for node ${nodeId} from ${normalizedUrl}`);
+            const thumbnail = await figmaParser['figmaApi']!.getNodeThumbnail(normalizedUrl, nodeId, { scale, format });
+            
+            if (!thumbnail) {
+              // Try alternative approach for large files
+              console.log('⚠️ Direct thumbnail failed, trying alternative approach...');
+              
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Thumbnail generation failed for node ${nodeId}. This may be due to:\n` +
+                          `1. The node is part of a large design system file\n` +
+                          `2. The node requires special permissions\n` +
+                          `3. The image generation service is temporarily unavailable\n\n` +
+                          `Alternative: You can view this node directly in Figma using the selection URL.`,
+                  },
+                ],
+              };
+            }
+
+            console.log(`✅ Successfully generated thumbnail for node ${nodeId}`);
+            return {
+              content: [
+                {
+                  type: 'image',
+                  data: thumbnail,
+                  mimeType: format === 'jpg' ? 'image/jpeg' : 
+                           format === 'svg' ? 'image/svg+xml' : 'image/png',
+                },
+              ],
+            };
+          } catch (error) {
+            console.error(`❌ Thumbnail generation error for node ${nodeId}:`, error);
+            
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Unable to generate thumbnail for node ${nodeId}.\n\n` +
+                        `Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+                        `This is common with large design system files. ` +
+                        `You can still use the parsed component data to generate React code.`,
+                },
+              ],
+            };
+          }
         }
 
         case 'read_figma_comments': {
