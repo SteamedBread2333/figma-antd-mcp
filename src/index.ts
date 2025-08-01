@@ -20,6 +20,41 @@ import { CodeGenerator } from './generators/code-generator.js';
 import { CodeValidator } from './validators/code-validator.js';
 import { FigmaComment, FigmaApi } from './parsers/figma-api.js';
 
+// Add call deduplication cache
+const callCache = new Map<string, { result: any; timestamp: number; inProgress: boolean }>();
+const CACHE_TTL = 30000; // 30 seconds
+const DUPLICATE_CALL_THRESHOLD = 1000; // 1 second
+
+/**
+ * Generate cache key for tool calls
+ */
+function generateCacheKey(toolName: string, args: any): string {
+  return `${toolName}:${JSON.stringify(args)}`;
+}
+
+/**
+ * Check if this is a duplicate call within threshold
+ */
+function isDuplicateCall(cacheKey: string): boolean {
+  const cached = callCache.get(cacheKey);
+  if (!cached) return false;
+  
+  const now = Date.now();
+  return (now - cached.timestamp) < DUPLICATE_CALL_THRESHOLD || cached.inProgress;
+}
+
+/**
+ * Clean expired cache entries
+ */
+function cleanCache(): void {
+  const now = Date.now();
+  for (const [key, value] of callCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      callCache.delete(key);
+    }
+  }
+}
+
 /**
  * Create and configure the MCP server
  */
@@ -280,7 +315,35 @@ async function createServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
+    // Clean expired cache entries periodically
+    cleanCache();
+
+    // Generate cache key for deduplication
+    const cacheKey = generateCacheKey(name, args);
+    
+    // Check for duplicate calls
+    if (isDuplicateCall(cacheKey)) {
+      console.error(`🚫 Duplicate call detected for ${name}, ignoring. Cache key: ${cacheKey.substring(0, 100)}...`);
+      
+      const cached = callCache.get(cacheKey);
+      if (cached && cached.result && !cached.inProgress) {
+        console.error(`📋 Returning cached result for ${name}`);
+        return cached.result;
+      } else {
+        console.error(`⏳ Call in progress for ${name}, returning error to prevent duplicate execution`);
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Duplicate call detected for ${name}. Please wait for the current operation to complete.`
+        );
+      }
+    }
+
+    // Mark call as in progress
+    callCache.set(cacheKey, { result: null, timestamp: Date.now(), inProgress: true });
+
     try {
+      let result: any;
+
       switch (name) {
         case 'parse_figma_design': {
           const { figmaUrl, nodeId, accessToken } = args as {
@@ -289,15 +352,16 @@ async function createServer() {
             accessToken: string;
           };
 
-          const result = await figmaParser.parseFile(figmaUrl, accessToken, nodeId);
-          return {
+          const parseResult = await figmaParser.parseFile(figmaUrl, accessToken, nodeId);
+          result = {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(result, null, 2),
+                text: JSON.stringify(parseResult, null, 2),
               },
             ],
           };
+          break;
         }
 
         case 'add_figma_file': {
@@ -310,16 +374,16 @@ async function createServer() {
           figmaParser.initialize(accessToken);
           
           // Parse the file to get basic information
-          const result = await figmaParser.parseFile(figmaUrl, accessToken);
+          const parseResult = await figmaParser.parseFile(figmaUrl, accessToken);
           
           // Return a summary of the file
           const summary = {
-            name: result.file.name,
-            lastModified: result.file.lastModified,
-            componentsCount: result.components.length,
-            stylesCount: result.styles.length,
-            assetsCount: result.assets.length,
-            mainFrames: result.components
+            name: parseResult.file.name,
+            lastModified: parseResult.file.lastModified,
+            componentsCount: parseResult.components.length,
+            stylesCount: parseResult.styles.length,
+            assetsCount: parseResult.assets.length,
+            mainFrames: parseResult.components
               .filter((c: ParsedComponent) => c.type === 'FRAME' && c.children && c.children.length > 0)
               .map((c: ParsedComponent) => ({
                 id: c.id,
@@ -331,13 +395,13 @@ async function createServer() {
               .slice(0, 10) // Limit to first 10 frames
           };
 
-          return {
+          result = {
             content: [
               {
                 type: 'text',
-                text: `Successfully added Figma file: ${result.file.name}\n\n` +
+                text: `Successfully added Figma file: ${parseResult.file.name}\n\n` +
                       `File Summary:\n` +
-                      `- Last Modified: ${result.file.lastModified}\n` +
+                      `- Last Modified: ${parseResult.file.lastModified}\n` +
                       `- Components: ${summary.componentsCount}\n` +
                       `- Styles: ${summary.stylesCount}\n` +
                       `- Assets: ${summary.assetsCount}\n\n` +
@@ -349,6 +413,7 @@ async function createServer() {
               },
             ],
           };
+          break;
         }
 
         case 'get_figma_node_thumbnail': {
@@ -550,9 +615,13 @@ async function createServer() {
             accessToken: string;
           };
 
+          console.error(`🔄 parse_figma_selection called with URL: ${figmaUrl}`);
+          console.error(`🕐 Timestamp: ${new Date().toISOString()}`);
+
           // Extract node ID from the URL
           const nodeId = FigmaApi.extractNodeId(figmaUrl);
           if (!nodeId) {
+            console.error(`❌ No node-id found in URL: ${figmaUrl}`);
             return {
               content: [
                 {
@@ -563,29 +632,42 @@ async function createServer() {
             };
           }
 
-          // Parse the specific node
-          const result = await figmaParser.parseFile(figmaUrl, accessToken, nodeId);
-          
-          // Filter to only the selected node and its children
-          const selectedComponents = result.components.filter((c: ParsedComponent) => 
-            c.id === nodeId || c.id.startsWith(nodeId)
-          );
+          console.error(`🎯 Extracted nodeId: ${nodeId}`);
 
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  ...result,
-                  components: selectedComponents,
-                  selection: {
-                    nodeId,
-                    componentsFound: selectedComponents.length
-                  }
-                }, null, 2),
-              },
-            ],
-          };
+                      try {
+            // Parse the specific node
+            console.error(`🚀 Starting parseFile for nodeId: ${nodeId}`);
+            const parseResult = await figmaParser.parseFile(figmaUrl, accessToken, nodeId);
+            console.error(`✅ parseFile completed successfully`);
+            
+            // Filter to only the selected node and its children
+            const selectedComponents = parseResult.components.filter((c: ParsedComponent) => 
+              c.id === nodeId || c.id.startsWith(nodeId)
+            );
+
+            console.error(`📊 Found ${selectedComponents.length} components for selection`);
+
+            result = {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify({
+                    ...parseResult,
+                    components: selectedComponents,
+                    selection: {
+                      nodeId,
+                      componentsFound: selectedComponents.length,
+                      timestamp: new Date().toISOString()
+                    }
+                  }, null, 2),
+                },
+              ],
+            };
+          } catch (error) {
+            console.error(`💥 parse_figma_selection failed:`, error);
+            throw error; // Re-throw to let MCP handle the error properly
+          }
+          break;
         }
 
         case 'get_component_mapping': {
@@ -594,15 +676,16 @@ async function createServer() {
             context?: string;
           };
 
-          const result = await codeGenerator.getComponentMapping(figmaNode, context);
-          return {
+          const mappingResult = await codeGenerator.getComponentMapping(figmaNode, context);
+          result = {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(result, null, 2),
+                text: JSON.stringify(mappingResult, null, 2),
               },
             ],
           };
+          break;
         }
 
         default:
@@ -611,7 +694,18 @@ async function createServer() {
             `Unknown tool: ${name}`
           );
       }
+
+      // Cache the successful result
+      callCache.set(cacheKey, { result, timestamp: Date.now(), inProgress: false });
+      console.error(`✅ ${name} completed successfully, result cached`);
+      
+      return result;
+
     } catch (error) {
+      // Remove from cache on error
+      callCache.delete(cacheKey);
+      console.error(`💥 ${name} failed, removed from cache:`, error);
+      
       throw new McpError(
         ErrorCode.InternalError,
         `Error executing tool ${name}: ${error instanceof Error ? error.message : String(error)}`
